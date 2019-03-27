@@ -66,6 +66,28 @@ const setDefaultBranch = (repo, branch = 'develop') => {
   .then(response => response.json())
 }
 
+const addAdminTeams = (repo, teams = ['Engineering']) => {
+  return Promise.all(teams.map(team => getTeamID(team)))
+    .then(teamIDs => Promise.all(teamIDs.map(teamID => {
+      const url = `${BASE_URL}teams/${teamID}/repos/${ORGANISATION}/${repo}`
+      return fetch(url, { 
+        method: 'PUT',
+        body: JSON.stringify({
+          permission: 'admin'
+        })
+      })
+      .then(response => response.ok)
+    })))
+}
+
+const getTeamID = teamName => {
+  const url = `${BASE_URL}orgs/${ORGANISATION}/teams`
+  return fetch(url)
+    .then(response => response.json())
+    .then(teams => teams.filter(team => team.name === teamName))
+    .then(teams => teams[0].id)
+}
+
 const protectBranch = (repo, branch) => {
   if (!branch) {
     throw new Error('branch name required to protect a branch')
@@ -94,6 +116,7 @@ const protectBranch = (repo, branch) => {
 
 const newWhichRepo = repo => {
   return createRepo(repo)
+    .then(() => addAdminTeams(repo))
     .then(() => createBranchFromMaster(repo, 'develop'))
     .then(() => setDefaultBranch(repo, 'develop'))
     .then(() => protectBranch(repo, 'master'))
@@ -103,6 +126,7 @@ const newWhichRepo = repo => {
 
 module.exports = {
   createRepo,
+  addAdminTeams,
   createBranchFromMaster,
   setDefaultBranch,
   protectBranch,
